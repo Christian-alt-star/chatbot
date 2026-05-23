@@ -2,6 +2,5 @@ flask
 flask-cors
 openai
 gunicorn
-langchain
 langchain-community
 pypdf
