@@ -65,7 +65,6 @@
     }
   }
 
-  // Hacer que solo el clic en el botón o texto del header minimice, evitando conflictos
   chatbotHeader.addEventListener("click", (e) => {
     if (e.target.id !== "send-btn" && e.target.id !== "chat-input") {
       toggleChat();
@@ -83,7 +82,7 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight; 
 
     try {
-      const res = await fetch("https://onrender.com", {
+      const res = await fetch("https://chatbot-eygx.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg })
