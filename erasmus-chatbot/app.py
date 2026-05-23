@@ -44,6 +44,7 @@ CONTEXTO_BOT = obtener_contexto_estatico()
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    # 1. Validar que la petición sea JSON
     if not request.is_json:
         return jsonify({"reply": "Error: La petición debe ser JSON."}), 400
 
@@ -52,7 +53,7 @@ def chat():
         return jsonify({"reply": "Por favor, escribe un mensaje válido."}), 400
 
     try:
-        # Instrucciones del sistema para Gemini
+        # Configuración estricta de las directrices del bot
         system_instruction = (
             "Eres el asistente oficial Erasmus de una universidad.\n"
             "Reglas estrictas:\n"
@@ -63,7 +64,7 @@ def chat():
             f"CONTEXTO OFICIAL EXTRAÍDO DE LOS PDF:\n{CONTEXTO_BOT}"
         )
 
-        # Llamada oficial a Gemini 1.5 Flash
+        # 2. Llamada oficial compatible con google-genai
         response = client.models.generate_content(
             model='gemini-1.5-flash',
             contents=str(user_message),
@@ -73,11 +74,24 @@ def chat():
             )
         )
         
-        return jsonify({"reply": response.text})
+        # 3. Extracción blindada del texto (Evita fallos de respuesta vacía)
+        if response and hasattr(response, 'text') and response.text:
+            return jsonify({"reply": response.text})
+        elif response and response.candidates:
+            # Ruta alternativa si la respuesta viene empaquetada de otra forma
+            try:
+                texto_alternativo = response.candidates[0].content.parts[0].text
+                return jsonify({"reply": texto_alternativo})
+            except:
+                return jsonify({"reply": "Lo siento, la IA devolvió una estructura ilegible."}), 500
+        else:
+            return jsonify({"reply": "Lo siento, Google no generó texto para esta consulta."}), 500
         
     except Exception as e:
-        print(f"❌ ERROR EN GEMINI API: {str(e)}")
-        return jsonify({"reply": f"Fallo interno en el asistente: {str(e)}"}), 500
+        # Imprime el fallo real directo en tus logs de Render
+        print(f"❌ ERROR CRÍTICO EN /CHAT CON GEMINI: {str(e)}")
+        # Te devuelve el error de Python directo al chat para que no tengas que adivinarlo
+        return jsonify({"reply": f"Fallo interno en el asistente de Google: {str(e)}"}), 500
 
 @app.route("/")
 def home():
