@@ -18,7 +18,7 @@ def load_documents():
     docs = []
     for file in os.listdir("data"):
         if file.endswith(".pdf"):
-            loader = PyPDFLoader(f"data/{file}")
+            lloader = PyPDFLoader("data/convocatoria.pdf") 
             docs.extend(loader.load())
     return docs
 
