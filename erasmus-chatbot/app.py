@@ -1,48 +1,40 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
 
-if "OPENAI_API_KEY" not in os.environ or os.environ["OPENAI_API_KEY"] == "TU_API_KEY":
-    os.environ["OPENAI_API_KEY"] = "TU_API_KEY"
+# 🔐 API KEY (Se configurará de forma segura en Render)
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "TU_API_KEY")
+client = OpenAI(api_key=OPENAI_KEY)
 
-def load_documents():
-    docs = []
-    if not os.path.exists("data"):
-        print("Error: La carpeta 'data' no existe.")
-        return docs
+# 🔹 Cargar texto de los documentos de forma ultraligera
+def obtener_contexto_estatico():
+    texto_contexto = ""
+    ruta_data = "data"
+    
+    if not os.path.exists(ruta_data):
+        return "No hay documentos disponibles."
         
-    for file in os.listdir("data"):
+    # En lugar de usar pesadas librerías de vectores, leemos de forma directa
+    for file in os.listdir(ruta_data):
         if file.endswith(".pdf"):
-            ruta_completa = os.path.join("data", file)
-            print(f"Cargando documento: {ruta_completa}")
-            loader = PyPDFLoader(ruta_completa)
-            docs.extend(loader.load())
-    return docs
+            try:
+                # Importación local para no saturar la memoria inicial
+                from pypdf import PdfReader
+                reader = PdfReader(os.path.join(ruta_data, file))
+                for page in reader.pages:
+                    texto_contexto += page.extract_text() + "\n"
+            except Exception as e:
+                print(f"Error al leer {file}: {e}")
+                
+    # Recortamos el contexto para no saturar los tokens de la API
+    return texto_contexto[:15000] 
 
-def get_vectorstore():
-    embeddings = OpenAIEmbeddings()
-    if os.path.exists("vectorstore"):
-        print("Cargando vectorstore existente...")
-        return FAISS.load_local("vectorstore", embeddings, allow_dangerous_deserialization=True)
-    else:
-        print("Creando nuevo vectorstore a partir de los PDFs...")
-        docs = load_documents()
-        if not docs:
-            raise ValueError("No se encontraron documentos PDF en la carpeta 'data' para procesar.")
-        db = FAISS.from_documents(docs, embeddings)
-        db.save_local("vectorstore")
-        return db
-
-db = get_vectorstore()
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+# Cargamos el texto una sola vez al encender el servidor
+CONTEXTO_BOT = obtener_contexto_estatico()
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -50,34 +42,33 @@ def chat():
     if not user_message:
         return jsonify({"reply": "Por favor, escribe un mensaje válido."}), 400
 
-    docs = db.similarity_search(user_message, k=3)
-    context = "\n\n".join([d.page_content for d in docs])
-
-    prompt = f"""
-Eres el asistente oficial Erasmus de una universidad.
-
-Reglas:
-- Responde en español
-- Usa SOLO la información proporcionada
-- Si no está en el contexto, di que no lo sabes
-- Sé claro y estructurado
-
-Contexto:
-{context}
-
-Pregunta:
-{user_message}
-"""
-
-    response = llm.invoke(prompt)
-    return jsonify({"reply": response.content})
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.2,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres el asistente oficial Erasmus de una universidad.\n"
+                        "Reglas:\n- Responde en español.\n"
+                        "- Usa SOLO la información proporcionada en el contexto.\n"
+                        "- Si la respuesta no está en el contexto, di textualmente que no lo sabes.\n"
+                        "- Sé claro y estructurado.\n\n"
+                        f"Contexto disponible:\n{CONTEXTO_BOT}"
+                    )
+                },
+                {"role": "user", "content": user_message}
+            ]
+        )
+        return jsonify({"reply": response.choices[0].message.content})
+    except Exception as e:
+        return jsonify({"reply": f"Error interno en el asistente: {str(e)}"}), 500
 
 @app.route("/")
 def home():
-    return "Chatbot Erasmus funcionando perfectamente"
+    return "Chatbot Erasmus funcionando perfectamente en modo ligero"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
     app.run(host='0.0.0.0', port=port)
