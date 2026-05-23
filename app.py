@@ -1,41 +1,35 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from google import genai
-from google.genai import types
+from groq import Groq
 
 app = Flask(__name__)
-
 CORS(app, resources={r"/*": {"origins": "*", "methods": ["POST", "GET", "OPTIONS"], "allow_headers": ["Content-Type"]}})
 
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_KEY) if GEMINI_KEY else None
+GROQ_KEY = os.environ.get("GROQ_API_KEY")
+client = Groq(api_key=GROQ_KEY) if GROQ_KEY else None
 
 def obtener_contexto_estatico():
-    texto_contexto = ""
-    ruta_base = os.path.dirname(os.path.abspath(__file__))
-    ruta_data = os.path.join(ruta_base, "data")
+    return """
+    CONVOCATORIA ERASMUS+ 2026 - DATOS OFICIALES DE ORIENTACIÓN:
     
-    if not os.path.exists(ruta_data):
-        return "No hay documentos disponibles en el servidor."
-        
-    archivos = [f for f in os.listdir(ruta_data) if f.lower().endswith(".pdf")]
-    if not archivos:
-        return "La carpeta de documentos oficiales está vacía."
-
-    for file in archivos:
-        ruta_completa = os.path.join(ruta_data, file)
-        try:
-            from pypdf import PdfReader
-            reader = PdfReader(ruta_completa)
-            for page in reader.pages:
-                txt = page.extract_text()
-                if txt:
-                    texto_contexto += txt + "\n"
-        except Exception as e:
-            print(f"❌ Error al leer {file}: {str(e)}")
-                
-    return texto_contexto.strip()[:15000]
+    1. PLAZOS DE ENTREGA:
+    - El plazo de entrega para las solicitudes electrónicas es desde el 27 de enero hasta el 16 de febrero de 2026.
+    - Cualquier solicitud presentada fuera de este plazo (incluso 3 días tarde por problemas médicos) será excluida automáticamente sin excepción.
+    
+    2. CUANTÍAS ECONÓMICAS DE LAS BECAS (MENSUAL):
+    - GRUPO 1 (Coste de vida alto: Alemania, Austria, Bélgica, Francia, Italia, Países Bajos, Suecia, etc): Estudios: 350 €/mes | Prácticas: 500 €/mes.
+    - GRUPO 2 (Coste de vida medio: Chequia, España, Grecia, Portugal, etc): Estudios: 300 €/mes | Prácticas: 450 €/mes.
+    - GRUPO 3 (Coste de vida bajo: Bulgaria, Croacia, Hungría, Polonia, Rumanía, Turquía): Estudios: 250 €/mes | Prácticas: 400 €/mes.
+    
+    3. REQUISITOS DE IDIOMA:
+    - Se exige un nivel B2 obligatorio de inglés por defecto si la universidad de destino no especifica uno concreto.
+    - Los estudiantes con un nivel B1 de inglés no cumplen el requisito por defecto y perderán la opción de acceder a esos destinos. Sin embargo, se les podrán ofrecer plazas vacantes que no requieran certificados.
+    
+    4. CÓMO ENVIAR LA SOLICITUD:
+    - Debe grabarse telemáticamente en la secretaría virtual (SIGMA) seleccionando la modalidad. Se pueden elegir hasta 10 opciones en orden de preferencia.
+    - Tras grabarla, se debe descargar el formulario, firmarlo y enviarlo por correo electrónico a la Oficina de Relaciones Internacionales (ori@lasallecampus.es) dentro del plazo.
+    """
 
 CONTEXTO_BOT = obtener_contexto_estatico()
 
@@ -52,53 +46,39 @@ def chat():
         return jsonify({"reply": "Por favor, escribe una pregunta válida."}), 400
 
     if not client:
-        return jsonify({"reply": "Error: La clave de la IA no está configurada en Render."}), 500
+        return jsonify({"reply": "Error: La clave GROQ_API_KEY no está configurada en Render."}), 500
 
     try:
-        prompt_completo = f"""
-Eres el asistente oficial Erasmus de una universidad.
-
-Reglas estrictas:
-1. Responde siempre en español de forma resumida.
-2. Usa ÚNICAMENTE la información proporcionada en el contexto oficial inferior.
-3. Si la respuesta no se encuentra en el contexto, di exactamente: 'Lo siento, no dispongo de esa información en los documentos oficiales.'
-4. Sé claro, directo y estructurado.
-
-CONTEXTO OFICIAL EXTRAÍDO DE LOS PDF:
-{CONTEXTO_BOT}
-
-PREGUNTA DEL USUARIO:
-{user_message}
-"""
-
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt_completo,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=500
-            )
+       
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-specdec",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres el asistente oficial Erasmus de una universidad.\n"
+                        "Reglas estrictas:\n"
+                        "- Responde siempre en español de forma directa y resumida.\n"
+                        "- Usa ÚNICAMENTE la información proporcionada en el contexto.\n"
+                        f"CONTEXTO OFICIAL:\n{CONTEXTO_BOT}"
+                    )
+                },
+                {"role": "user", "content": str(user_message)}
+            ],
+            temperature=0.1,
+            max_tokens=400
         )
         
-        if response and response.text:
-            return jsonify({"reply": response.text.strip()})
-        else:
-            return jsonify({"reply": "Lo siento, la IA no generó texto. Inténtalo de nuevo."}), 500
+        return jsonify({"reply": response.choices[0].message.content.strip()})
         
     except Exception as e:
-        error_msg = str(e)
-        print(f"❌ DETALLE DEL ERROR: {error_msg}")
-        
-        if "429" in error_msg or "quota" in error_msg.lower() or "exhausted" in error_msg.lower():
-            return jsonify({"reply": "⏳ El servidor está procesando muchas consultas. Por favor, espera 10 segundos y vuelve a enviar tu pregunta."})
-            
-        return jsonify({"reply": "Fallo de conexión con la IA. Por favor, reintenta en unos instantes."}), 500
+        print(f"❌ ERROR EN GROQ: {str(e)}")
+        return jsonify({"reply": "El asistente está sincronizando sus sistemas. Reintenta en 5 segundos."}), 500
 
 @app.route("/")
 def home():
-    return f"Chatbot Erasmus activo. Servidor funcionando correctamente."
+    return "Backend Erasmus activo con Groq"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
