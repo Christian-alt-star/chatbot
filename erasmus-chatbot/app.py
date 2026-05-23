@@ -49,19 +49,19 @@ CONTEXTO_BOT = obtener_contexto_estatico()
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    # Validación de seguridad para evitar caídas por peticiones mal formadas
+    # 1. Asegurar que la petición sea un JSON válido
     if not request.is_json:
-        return jsonify({"reply": "Error: La petición debe ser JSON."}), 400
+        return jsonify({"reply": "Error: La petición de datos debe ser formato JSON."}), 400
 
     user_message = request.json.get("message")
     if not user_message or not str(user_message).strip():
-        return jsonify({"reply": "Por favor, escribe un mensaje válido."}), 400
+        return jsonify({"reply": "Por favor, escribe una pregunta válida."}), 400
 
     try:
-        # Llamada directa a la API de OpenAI con la estructura corregida
+        # 2. Llamada ultra-segura a OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            temperature=0.1, # Bajamos a 0.1 para que sea más estricto con tus normas
+            temperature=0.1,
             messages=[
                 {
                     "role": "system",
@@ -78,10 +78,19 @@ def chat():
                 {"role": "user", "content": str(user_message)}
             ]
         )
-        return jsonify({"reply": response.choices[0].message.content})
+        
+        # 3. Extracción segura del contenido (Evita el Error 500)
+        if response.choices and len(response.choices) > 0:
+            bot_reply = response.choices[0].message.content
+            return jsonify({"reply": bot_reply})
+        else:
+            return jsonify({"reply": "El modelo de IA no generó ninguna respuesta válida."}), 500
+
     except Exception as e:
-        print(f"Error en OpenAI API: {e}")
-        return jsonify({"reply": f"Error en el servidor de IA: {str(e)}"}), 500
+        # Este print aparecerá detallado en la pestaña 'Logs' de Render
+        print(f"❌ ERROR CRÍTICO EN /CHAT: {str(e)}")
+        return jsonify({"reply": f"Fallo interno en el asistente: {str(e)}"}), 500
+
 
 @app.route("/")
 def home():
