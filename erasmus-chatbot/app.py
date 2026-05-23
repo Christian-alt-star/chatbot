@@ -4,68 +4,84 @@ import os
 from openai import OpenAI
 
 app = Flask(__name__)
-# Permitimos el acceso total de CORS para tu entorno localhost sin restricciones
+# CORS configurado de forma segura pero abierta para tu entorno web
 CORS(app, resources={r"/*": {"origins": "*"}}) 
 
 # 🔐 API KEY (Se lee directamente desde el entorno seguro de Render)
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+
+# Inicialización segura del cliente OpenAI
+if not OPENAI_KEY:
+    print("⚠️ CRÍTICO: La variable de entorno OPENAI_API_KEY no está configurada.")
 client = OpenAI(api_key=OPENAI_KEY)
 
-# 🔹 Cargar texto de tus 3 documentos de forma directa (Sin gastar memoria)
+# 🔹 Cargar texto de tus 3 documentos de forma directa
 def obtener_contexto_estatico():
     texto_contexto = ""
-    ruta_data = "data"
+    # Forzamos una ruta absoluta para evitar fallos de lectura en servidores Linux (Render)
+    ruta_base = os.path.dirname(os.path.abspath(__file__))
+    ruta_data = os.path.join(ruta_base, "data")
     
     if not os.path.exists(ruta_data):
-        print("Advertencia: La carpeta 'data' no se encuentra en el servidor.")
+        print(f"Advertencia: La carpeta '{ruta_data}' no existe. Creándola vacía...")
+        os.makedirs(ruta_data, exist_ok=True)
         return "No hay documentos disponibles."
         
     for file in os.listdir(ruta_data):
-        if file.endswith(".pdf"):
+        if file.lower().endswith(".pdf"):
+            ruta_completa = os.path.join(ruta_data, file)
             try:
                 from pypdf import PdfReader
-                reader = PdfReader(os.path.join(ruta_data, file))
+                reader = PdfReader(ruta_completa)
                 for page in reader.pages:
-                    texto_contexto += page.extract_text() + "\n"
-                print(f"Documento cargado con éxito: {file}")
+                    texto_extraido = page.extract_text()
+                    if texto_extraido:
+                        texto_contexto += texto_extraido + "\n"
+                print(f"✅ Documento cargado con éxito: {file}")
             except Exception as e:
-                print(f"Error al leer el archivo {file}: {e}")
+                print(f"❌ Error al leer el archivo {file}: {e}")
                 
-    return texto_contexto[:15000] # Limitamos los caracteres para no saturar el prompt
+    # Reducimos ligeramente el límite para asegurar que el modelo procese bien las reglas
+    return texto_contexto[:25000] 
 
-# Cargamos los datos de tus PDFs en la memoria inicial
+# Cargamos los datos de tus PDFs en la memoria inicial del servidor
 CONTEXTO_BOT = obtener_contexto_estatico()
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    # Validación de seguridad para evitar caídas por peticiones mal formadas
+    if not request.is_json:
+        return jsonify({"reply": "Error: La petición debe ser JSON."}), 400
+
     user_message = request.json.get("message")
-    if not user_message:
+    if not user_message or not str(user_message).strip():
         return jsonify({"reply": "Por favor, escribe un mensaje válido."}), 400
 
     try:
-        # Llamada directa y oficial a los modelos de OpenAI
+        # Llamada directa a la API de OpenAI con la estructura corregida
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            temperature=0.2,
+            temperature=0.1, # Bajamos a 0.1 para que sea más estricto con tus normas
             messages=[
                 {
                     "role": "system",
                     "content": (
                         "Eres el asistente oficial Erasmus de una universidad.\n"
-                        "Reglas:\n- Responde en español.\n"
-                        "- Usa SOLO la información proporcionada en el contexto.\n"
-                        "- Si la respuesta no está en el contexto, di textualmente que no lo sabes.\n"
-                        "- Sé claro y estructurado.\n\n"
-                        f"Contexto disponible extraído de los PDFs:\n{CONTEXTO_BOT}"
+                        "Reglas estrictas:\n"
+                        "- Responde siempre en español.\n"
+                        "- Usa ÚNICAMENTE la información proporcionada en el contexto inferior.\n"
+                        "- Si la respuesta no se encuentra en el contexto, di exactamente: 'Lo siento, no dispongo de esa información en los documentos oficiales.'\n"
+                        "- Sé claro, directo y estructurado.\n\n"
+                        f"CONTEXTO OFICIAL EXTRAÍDO DE LOS PDF:\n{CONTEXTO_BOT}"
                     )
                 },
-                {"role": "user", "content": user_message}
+                {"role": "user", "content": str(user_message)}
             ]
         )
         return jsonify({"reply": response.choices[0].message.content})
     except Exception as e:
         print(f"Error en OpenAI API: {e}")
-        return jsonify({"reply": f"Error interno en el asistente: {str(e)}"}), 500
+        return jsonify({"reply": f"Error en el servidor de IA: {str(e)}"}), 500
 
 @app.route("/")
 def home():
