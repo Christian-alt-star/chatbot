@@ -25,10 +25,9 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight; 
 
     try {
-      // 🚀 Petición optimizada con modo cors explícito
+      // Petición directa sin forzar parámetros estrictos
       const res = await fetch("https://onrender.com", {
         method: "POST",
-        mode: "cors", 
         headers: {
           "Content-Type": "application/json"
         },
@@ -36,20 +35,19 @@
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.reply || `Código de estado HTTP: ${res.status}`);
+        throw new Error(`Error en servidor (Código ${res.status})`);
       }
 
       const data = await res.json();
       messagesContainer.innerHTML += `<p style="margin:5px 0;color:#003366;"><b>Bot:</b> ${data.reply}</p>`;
     } catch (error) {
-      // Imprime el motivo real en la pantalla para poder leerlo
       messagesContainer.innerHTML += `<p style="margin:5px 0;color:red;"><b>Fallo de conexión:</b> ${error.message}</p>`;
-      console.error("Detalle del error:", error);
+      console.error("Detalle:", error);
     }
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
+
 
   button.addEventListener("click", sendMessage);
   input.addEventListener("keypress", (e) => {
