@@ -25,11 +25,11 @@
       align-items:center;
       cursor:pointer;
     ">
-      <span style="flex:1;">🤖 Erasmus Bot</span>
-      <button id="chatbot-toggle-btn" style="background:none;border:none;color:white;cursor:pointer;font-size:12px;padding:0 5px;">名</button>
+      <span style="flex:1; pointer-events:none;">🤖 Erasmus Bot</span>
+      <button id="chatbot-toggle-btn" style="background:none; border:none; color:white; cursor:pointer; font-size:12px; padding:0 5px; font-weight:bold;">[-]</button>
     </div>
     
-    <div id="chatbot-body" style="display:flex; flex-direction:column; transition: all 0.2s ease;">
+    <div id="chatbot-body" style="display:flex; flex-direction:column;">
       <div id="messages" style="height:180px; overflow-y:auto; padding:10px; font-size:13px; background:#f9f9f9;"></div>
       <div style="display:flex; border-top:1px solid #eee;">
         <input id="chat-input" placeholder="Pregunta algo..." style="flex:1; border:none; padding:10px; font-size:13px; outline:none; border-radius:0 0 0 10px;">
@@ -60,16 +60,12 @@
     } else {
       chatbotBody.style.display = "flex";
       chatbotBox.style.width = "280px";
-      toggleBtn.innerText = "名";
+      toggleBtn.innerText = "[-]";
       isMinimized = false;
     }
   }
 
-  chatbotHeader.addEventListener("click", (e) => {
-    if (e.target.id !== "send-btn" && e.target.id !== "chat-input") {
-      toggleChat();
-    }
-  });
+  chatbotHeader.addEventListener("click", toggleChat);
 
   async function sendMessage() {
     const msg = input.value.trim();
@@ -82,13 +78,13 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight; 
 
     try {
-      const res = await fetch("https://chatbot-eygx.onrender.com", {
+      const res = await fetch("https://onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg })
       });
 
-      if (!res.ok) throw new Error(`Error (${res.status})`);
+      if (!res.ok) throw new Error(`Error en servidor (Código ${res.status})`);
 
       const data = await res.json();
       messagesContainer.innerHTML += `<p style="margin:4px 0; color:#003366; font-size:13px;"><b>Bot:</b> ${data.reply}</p>`;
