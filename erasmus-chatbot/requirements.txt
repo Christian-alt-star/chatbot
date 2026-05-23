@@ -1,7 +1,5 @@
 flask
 flask-cors
 gunicorn
+openai
 pypdf
-langchain-community
-langchain-openai
-faiss-cpu
