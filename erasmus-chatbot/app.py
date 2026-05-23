@@ -82,3 +82,11 @@ PREGUNTA DEL USUARIO:
     except Exception as e:
         print(f"❌ ERROR CRÍTICO EN /CHAT: {str(e)}")
         return jsonify({"reply": f"Fallo interno en el asistente de Google: {str(e)}"}), 500
+
+@app.route("/")
+def home():
+    return "Chatbot Erasmus funcionando con Gemini en modo gratuito"
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
