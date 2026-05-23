@@ -66,7 +66,7 @@ PREGUNTA DEL USUARIO:
 """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.5-flash', 
             contents=prompt_completo,
             config=types.GenerateContentConfig(
                 temperature=0.1,
@@ -77,8 +77,8 @@ PREGUNTA DEL USUARIO:
         if response and response.text:
             return jsonify({"reply": response.text.strip()})
         else:
-            return jsonify({"reply": "Lo siento, el asistente no generó texto válido."}), 500
+            return jsonify({"reply": "Lo siento, el asistente de Google no generó texto válido."}), 500
         
     except Exception as e:
         print(f"❌ ERROR CRÍTICO EN /CHAT: {str(e)}")
-        return jsonify({"reply": f"Fallo interno del servidor: {str(e)}"}), 500
+        return jsonify({"reply": f"Fallo interno en el asistente de Google: {str(e)}"}), 500
