@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 🔐 API KEY (Se configurará de forma segura en Render)
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "TU_API_KEY")
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_KEY)
 
 # 🔹 Cargar texto de los documentos de forma ultraligera
