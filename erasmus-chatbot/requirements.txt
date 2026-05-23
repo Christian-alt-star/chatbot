@@ -1,8 +1,7 @@
-flask 
-flask-cors 
-langchain 
-openai 
-faiss-cpu 
-pypdf 
-tiktoken
+flask
+flask-cors
+openai
 gunicorn
+langchain
+langchain-community
+pypdf
