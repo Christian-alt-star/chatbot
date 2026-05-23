@@ -73,7 +73,11 @@ PREGUNTA DEL USUARIO:
         # Llamada simplificada compatible con todas las versiones de google-genai
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=prompt_completo
+            contents=prompt_completo,
+            config={
+                "temperature": 0.1,
+                "max_output_tokens": 800  # Evita respuestas eternas que rompen el JSON de Flask
+            }
         )
         
         # Extracción segura de la respuesta
