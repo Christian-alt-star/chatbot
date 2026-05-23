@@ -6,14 +6,8 @@ from google.genai import types
 
 app = Flask(__name__)
 
-# CONFIGURACIÓN DE CORS BLINDADA PARA PRODUCCIÓN
-CORS(app, resources={
-    r"/*": {
-        "origins": "*",
-        "methods": ["POST", "GET", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+# Activación global y absoluta de CORS para cualquier origen y cabecera
+CORS(app)
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_KEY)
