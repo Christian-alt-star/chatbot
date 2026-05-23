@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Orientación Erasmus</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Oficina de Relaciones Internacionales</h1>
+        <p>Convocatoria de Movilidad de Estudiantes Erasmus+ 2026/2027</p>
+    </header>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h2>¿Tienes dudas sobre tu solicitud?</h2>
+            <p>Hemos diseñado este portal interactivo para ayudarte en tu proceso de orientación. Abajo a la derecha tienes disponible a nuestro <b>Erasmus Bot</b> de Inteligencia Artificial que ha leído todos los documentos, bases y normativas oficiales.</p>
+        </div>
+
+        <div class="guide-section">
+            <h3>Preguntas de orientación rápida</h3>
+            <p style="margin-bottom: 20px; color: #666;">Haz clic en cualquiera de las siguientes preguntas frecuentes para enviársela automáticamente al asistente virtual:</p>
+            
+            <div class="grid-questions">
+                <button class="faq-btn" onclick="lanzarPregunta('¿Cuál es el plazo general para entregar las solicitudes?')">Plazos de entrega</button>
+                <button class="faq-btn" onclick="lanzarPregunta('¿De cuánto es la cuantía económica mensual de la beca?')">Importes de las becas</button>
+                <button class="faq-btn" onclick="lanzarPregunta('¿Cuáles son los requisitos de idioma obligatorios?')">Requisitos de idioma</button>
+                <button class="faq-btn" onclick="lanzarPregunta('¿Qué pasa si presento la solicitud fuera de plazo?')">Entregas fuera de plazo</button>
+                <button class="faq-btn" onclick="lanzarPregunta('¿Cómo se formaliza y envía la solicitud por correo?')">Cómo enviar la solicitud</button>
+                <button class="faq-btn" onclick="lanzarPregunta('Tengo un nivel B1 de inglés, ¿puedo optar a los destinos?')">Duda con nivel de inglés B1</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function lanzarPregunta(textoPregunta) {
+            const inputChat = document.getElementById("chat-input");
+            const botonEnviar = document.getElementById("send-btn");
+
+            if (inputChat && botonEnviar) {
+                inputChat.value = textoPregunta;
+                botonEnviar.click();
+            } else {
+                alert("Por favor, espera a que el chatbot se cargue por completo en la esquina inferior derecha.");
+            }
+        }
+    </script>
+
+    <script src="static/widget.js"></script>
+
+</body>
+</html>
