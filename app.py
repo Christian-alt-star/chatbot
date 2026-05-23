@@ -49,31 +49,36 @@ def chat():
         return jsonify({"reply": "Error: La clave GROQ_API_KEY no está configurada en Render."}), 500
 
     try:
-       
+        prompt_completo = f"""
+Eres el asistente oficial Erasmus de una universidad.
+
+Reglas estrictas:
+- Responde siempre en español de forma directa y resumida.
+- Usa ÚNICAMENTE la información proporcionada en el contexto.
+
+CONTEXTO OFICIAL:
+{CONTEXTO_BOT}
+"""
+
+        
         response = client.chat.completions.create(
-            model="llama-3.3-70b-specdec",
+            model="groq/compound-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Eres el asistente oficial Erasmus de una universidad.\n"
-                        "Reglas estrictas:\n"
-                        "- Responde siempre en español de forma directa y resumida.\n"
-                        "- Usa ÚNICAMENTE la información proporcionada en el contexto.\n"
-                        f"CONTEXTO OFICIAL:\n{CONTEXTO_BOT}"
-                    )
-                },
+                {"role": "system", "content": prompt_completo},
                 {"role": "user", "content": str(user_message)}
             ],
             temperature=0.1,
             max_tokens=400
         )
         
-        return jsonify({"reply": response.choices[0].message.content.strip()})
+        if response and response.choices:
+            return jsonify({"reply": response.choices[0].message.content.strip()})
+        else:
+            return jsonify({"reply": "El asistente no pudo procesar la respuesta. Reintenta."}), 500
         
     except Exception as e:
-        print(f"❌ ERROR EN GROQ: {str(e)}")
-        return jsonify({"reply": "El asistente está sincronizando sus sistemas. Reintenta en 5 segundos."}), 500
+        print(f"❌ ERROR CRÍTICO EN GROQ: {str(e)}")
+        return jsonify({"reply": f"Fallo en los sistemas del asistente: {str(e)}"}), 500
 
 @app.route("/")
 def home():
