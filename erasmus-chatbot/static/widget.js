@@ -26,7 +26,7 @@
 
     try {
       // Petición directa sin forzar parámetros estrictos
-      const res = await fetch("https://https://chatbot-eygx.onrender.com://onrender.com", {
+      const res = await fetch("https://chatbot-eygx.onrender.com/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
