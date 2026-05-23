@@ -4,7 +4,7 @@ import os
 from openai import OpenAI
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 🔐 API KEY (Se configurará de forma segura en Render)
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "TU_API_KEY")
